@@ -2,14 +2,40 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Briefcase, FileText, TrendingUp, ArrowRight, CheckCircle } from "lucide-react";
+import { Users, Briefcase, FileText, TrendingUp, ArrowRight, CheckCircle, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Navigation */}
+      <nav className="flex justify-between items-center p-4 max-w-7xl mx-auto">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-gray-900">TalentMatch Pro</h1>
+        </div>
+        <div className="flex gap-2">
+          {user ? (
+            <Button onClick={() => navigate('/dashboard')}>
+              Go to Dashboard
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => navigate('/auth')}>
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Button>
+              <Button onClick={() => navigate('/auth')}>
+                Get Started
+              </Button>
+            </>
+          )}
+        </div>
+      </nav>
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24">
@@ -31,9 +57,9 @@ const Index = () => {
               <Button 
                 size="lg" 
                 className="px-8 py-3 text-lg"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate(user ? '/dashboard' : '/auth')}
               >
-                Get Started
+                {user ? 'Go to Dashboard' : 'Get Started'}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button variant="outline" size="lg" className="px-8 py-3 text-lg">
@@ -250,9 +276,9 @@ const Index = () => {
             size="lg" 
             variant="secondary" 
             className="px-8 py-3 text-lg"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(user ? '/dashboard' : '/auth')}
           >
-            Start Free Trial
+            {user ? 'Go to Dashboard' : 'Start Free Trial'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>

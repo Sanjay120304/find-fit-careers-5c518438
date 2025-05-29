@@ -4,7 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Upload, Search, Star, MapPin, Clock, DollarSign } from "lucide-react";
+import { ArrowLeft, Upload, Search, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useJobs } from "@/hooks/useJobs";
+import { useProfile } from "@/hooks/useProfile";
 import CVUploader from "@/components/CVUploader";
 import JobCard from "@/components/JobCard";
 
@@ -16,62 +19,41 @@ const JobSeekerDashboard = ({ onBack }: JobSeekerDashboardProps) => {
   const [cvUploaded, setCvUploaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [atsScore, setAtsScore] = useState<number | null>(null);
-
-  // Mock job data
-  const mockJobs = [
-    {
-      id: 1,
-      title: "Senior Frontend Developer",
-      company: "TechCorp Inc.",
-      location: "San Francisco, CA",
-      salary: "$120k - $150k",
-      type: "Full-time",
-      relevancyScore: 92,
-      description: "We're looking for a senior frontend developer with React expertise...",
-      requirements: ["React", "TypeScript", "5+ years experience"],
-      postedDate: "2 days ago"
-    },
-    {
-      id: 2,
-      title: "Full Stack Engineer",
-      company: "StartupXYZ",
-      location: "Remote",
-      salary: "$100k - $130k",
-      type: "Full-time",
-      relevancyScore: 87,
-      description: "Join our fast-growing startup as a full stack engineer...",
-      requirements: ["React", "Node.js", "MongoDB"],
-      postedDate: "1 week ago"
-    },
-    {
-      id: 3,
-      title: "UI/UX Developer",
-      company: "Design Studio",
-      location: "New York, NY",
-      salary: "$90k - $110k",
-      type: "Full-time",
-      relevancyScore: 78,
-      description: "Creative UI/UX developer needed for innovative projects...",
-      requirements: ["Figma", "React", "CSS"],
-      postedDate: "3 days ago"
-    }
-  ];
+  
+  const { signOut } = useAuth();
+  const { data: profile } = useProfile();
+  const { data: jobs, isLoading } = useJobs();
 
   const handleCVUpload = (score: number) => {
     setCvUploaded(true);
     setAtsScore(score);
   };
 
+  const filteredJobs = jobs?.filter(job => 
+    job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    job.company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    job.description.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Job Seeker Dashboard</h1>
+              <p className="text-gray-600">Welcome back, {profile?.full_name || 'Job Seeker'}!</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={signOut}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Job Seeker Dashboard</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -110,17 +92,17 @@ const JobSeekerDashboard = ({ onBack }: JobSeekerDashboardProps) => {
             </Card>
 
             {/* Profile Summary */}
-            {cvUploaded && (
+            {profile && (
               <Card>
                 <CardHeader>
                   <CardTitle>Profile Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
+                    <Badge>{profile.role === 'job_seeker' ? 'Job Seeker' : 'Recruiter'}</Badge>
+                    {profile.location && <Badge variant="outline">{profile.location}</Badge>}
                     <Badge>React Developer</Badge>
                     <Badge>5+ Years Experience</Badge>
-                    <Badge>Full Stack</Badge>
-                    <Badge>TypeScript</Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -153,12 +135,37 @@ const JobSeekerDashboard = ({ onBack }: JobSeekerDashboardProps) => {
                 <h2 className="text-xl font-semibold">
                   {cvUploaded ? 'Recommended Jobs' : 'All Jobs'}
                 </h2>
-                <Badge variant="outline">{mockJobs.length} jobs found</Badge>
+                <Badge variant="outline">{filteredJobs.length} jobs found</Badge>
               </div>
 
-              {mockJobs.map((job) => (
-                <JobCard key={job.id} job={job} showRelevancy={cvUploaded} />
-              ))}
+              {isLoading ? (
+                <div className="text-center py-8">Loading jobs...</div>
+              ) : filteredJobs.length > 0 ? (
+                filteredJobs.map((job) => (
+                  <JobCard 
+                    key={job.id} 
+                    job={{
+                      id: parseInt(job.id),
+                      title: job.title,
+                      company: job.company.name,
+                      location: job.location,
+                      salary: job.salary_min && job.salary_max 
+                        ? `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`
+                        : 'Salary not specified',
+                      type: job.employment_type,
+                      relevancyScore: cvUploaded ? Math.floor(Math.random() * 20) + 80 : undefined,
+                      description: job.description,
+                      requirements: job.requirements || [],
+                      postedDate: new Date(job.created_at).toLocaleDateString()
+                    }} 
+                    showRelevancy={cvUploaded} 
+                  />
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No jobs found matching your criteria.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
