@@ -3,19 +3,21 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Users, Eye, Calendar, TrendingUp, LogOut } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Plus, Users, Eye, Calendar, TrendingUp, LogOut, User, Briefcase, FileText, Building } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useJobs } from "@/hooks/useJobs";
 import JobPostForm from "@/components/JobPostForm";
 import ApplicationsList from "@/components/ApplicationsList";
+import RecruiterProfile from "@/components/RecruiterProfile";
 
 interface RecruiterDashboardProps {
   onBack: () => void;
 }
 
 const RecruiterDashboard = ({ onBack }: RecruiterDashboardProps) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'post-job' | 'applications'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'applications' | 'profile'>('overview');
   
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
@@ -25,7 +27,7 @@ const RecruiterDashboard = ({ onBack }: RecruiterDashboardProps) => {
 
   const mockStats = {
     activeJobs: userJobs.length,
-    totalApplications: userJobs.length * 5, // Mock calculation
+    totalApplications: userJobs.length * 5,
     scheduledInterviews: 8,
     avgApplicationsPerJob: userJobs.length > 0 ? Math.round((userJobs.length * 5) / userJobs.length) : 0
   };
@@ -38,7 +40,7 @@ const RecruiterDashboard = ({ onBack }: RecruiterDashboardProps) => {
           <CardContent className="pt-6">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="h-6 w-6 text-blue-600" />
+                <Briefcase className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Jobs</p>
@@ -52,7 +54,7 @@ const RecruiterDashboard = ({ onBack }: RecruiterDashboardProps) => {
           <CardContent className="pt-6">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
-                <Eye className="h-6 w-6 text-green-600" />
+                <Users className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Applications</p>
@@ -94,12 +96,18 @@ const RecruiterDashboard = ({ onBack }: RecruiterDashboardProps) => {
       {/* Recent Jobs */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Job Postings</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Your Job Postings</CardTitle>
+            <Button onClick={() => setActiveTab('jobs')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Post New Job
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {userJobs.length > 0 ? (
-              userJobs.map((job) => (
+              userJobs.slice(0, 5).map((job) => (
                 <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h3 className="font-semibold">{job.title}</h3>
@@ -119,8 +127,9 @@ const RecruiterDashboard = ({ onBack }: RecruiterDashboardProps) => {
               ))
             ) : (
               <div className="text-center py-8">
+                <Building className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500 mb-4">You haven't posted any jobs yet.</p>
-                <Button onClick={() => setActiveTab('post-job')}>
+                <Button onClick={() => setActiveTab('jobs')}>
                   <Plus className="h-4 w-4 mr-2" />
                   Post Your First Job
                 </Button>
@@ -133,58 +142,64 @@ const RecruiterDashboard = ({ onBack }: RecruiterDashboardProps) => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b px-4 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="outline" onClick={onBack}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Recruiter Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Recruiter Dashboard</h1>
               <p className="text-gray-600">Welcome back, {profile?.full_name || 'Recruiter'}!</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => setActiveTab('post-job')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Post New Job
-            </Button>
-            <Button variant="outline" onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 mb-6">
-          <Button 
-            variant={activeTab === 'overview' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('overview')}
-          >
-            Overview
-          </Button>
-          <Button 
-            variant={activeTab === 'post-job' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('post-job')}
-          >
-            Post Job
-          </Button>
-          <Button 
-            variant={activeTab === 'applications' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('applications')}
-          >
-            Applications
+          <Button variant="outline" onClick={signOut}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
           </Button>
         </div>
+      </div>
 
-        {/* Content */}
-        {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'post-job' && <JobPostForm />}
-        {activeTab === 'applications' && <ApplicationsList />}
+      <div className="max-w-7xl mx-auto p-4">
+        <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="jobs" className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Job Postings
+            </TabsTrigger>
+            <TabsTrigger value="applications" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Applications
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Profile
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            {renderOverview()}
+          </TabsContent>
+
+          <TabsContent value="jobs">
+            <JobPostForm />
+          </TabsContent>
+
+          <TabsContent value="applications">
+            <ApplicationsList />
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <RecruiterProfile />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
