@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,31 +55,76 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       password,
     });
     if (error) {
-      console.error('Sign in error:', error);
+      console.error('Sign in error:', JSON.stringify(error, null, 2));
     } else {
       console.log('Sign in successful');
     }
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'job_seeker' | 'recruiter') => {
-    console.log('Attempting to sign up with:', { email, fullName, role });
-    const { error } = await supabase.auth.signUp({
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'job_seeker' | 'recruiter'
+  ) => {
+    console.log('Attempting to sign up with:', JSON.stringify({ email, password, fullName, role }, null, 2));
+
+    // Validate inputs
+    if (!password || password.length < 6) {
+      const error = { message: 'Password must be at least 6 characters.' };
+      console.error('Sign up error:', JSON.stringify(error, null, 2));
+      return { error };
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      const error = { message: 'Invalid email format.' };
+      console.error('Sign up error:', JSON.stringify(error, null, 2));
+      return { error };
+    }
+    if (!fullName || fullName.trim().length === 0) {
+      const error = { message: 'Full name is required.' };
+      console.error('Sign up error:', JSON.stringify(error, null, 2));
+      return { error };
+    }
+
+    // Perform signup
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          full_name: fullName,
-          role: role,
-        },
-      },
     });
+
     if (error) {
-      console.error('Sign up error:', error);
-    } else {
-      console.log('Sign up successful with role:', role);
+      console.error('Sign up error:', JSON.stringify(error, null, 2));
+      return { error };
     }
-    return { error };
+
+    const user = data.user;
+
+    // Set session to authenticate the user for profile insertion
+    if (data.session) {
+      await supabase.auth.setSession(data.session);
+      setSession(data.session);
+      setUser(user);
+    }
+
+    // Insert profile into 'profiles' table
+    const { error: insertError } = await supabase.from('profiles').insert([
+      {
+        id: user.id,
+        email: email, // Required by schema
+        full_name: fullName,
+        role: role,
+      },
+    ]);
+
+    if (insertError) {
+      console.error('Insert profile error:', JSON.stringify({ message: insertError.message, code: insertError.code, details: insertError.details }, null, 2));
+      return { error: { message: `Failed to create profile: ${insertError.message}` } };
+    }
+
+    console.log('Sign up successful with role:', role);
+    return { error: null };
   };
 
   const signOut = async () => {
