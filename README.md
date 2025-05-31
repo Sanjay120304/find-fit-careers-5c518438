@@ -1,8 +1,7 @@
 # Welcome to your Lovable project
 
 ## Project info
-
-**URL**: https://lovable.dev/projects/a63febae-117b-46bc-b8b9-8471e127db89
+Hosted On :https://find-fit-careers.lovable.app
 
 ## How can I edit this code?
 
