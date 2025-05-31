@@ -1,134 +1,129 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, DollarSign, Building, Star } from "lucide-react";
-import JobApplicationForm from './JobApplicationForm';
-
-interface Job {
-  id: number;
-  title: string;
-  company: string;
-  location: string;
-  salary: string;
-  type: string;
-  relevancyScore?: number;
-  description: string;
-  requirements: string[];
-  postedDate: string;
-}
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Building, MapPin, Clock, DollarSign, Users } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Job } from "@/hooks/useJobs";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
+import JobApplicationForm from "./JobApplicationForm";
 
 interface JobCardProps {
   job: Job;
-  showRelevancy?: boolean;
 }
 
-const JobCard = ({ job, showRelevancy = false }: JobCardProps) => {
-  const [showApplication, setShowApplication] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
+const JobCard = ({ job }: JobCardProps) => {
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
+  
+  const canApply = user && profile?.role === 'job_seeker';
 
-  const handleApply = () => {
-    setShowApplication(true);
-  };
-
-  const handleApplicationSubmit = () => {
-    setShowApplication(false);
-    // You could add additional logic here like updating the UI
+  const formatSalary = (min?: number, max?: number) => {
+    if (!min && !max) return 'Salary not specified';
+    if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+    if (min) return `From $${min.toLocaleString()}`;
+    return `Up to $${max?.toLocaleString()}`;
   };
 
   return (
-    <>
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <CardTitle className="text-xl">{job.title}</CardTitle>
-              <CardDescription className="flex items-center gap-2 mt-2">
+    <Card className="hover:shadow-lg transition-shadow duration-200">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-xl mb-2">{job.title}</CardTitle>
+            <CardDescription className="flex items-center gap-4 text-sm">
+              <span className="flex items-center gap-1">
                 <Building className="h-4 w-4" />
-                {job.company}
-              </CardDescription>
-            </div>
-            {showRelevancy && job.relevancyScore && (
-              <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
-                <Star className="h-3 w-3" />
-                {job.relevancyScore}% match
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-2 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
+                {job.company.name}
+              </span>
+              <span className="flex items-center gap-1">
                 <MapPin className="h-4 w-4" />
                 {job.location}
-              </div>
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-4 w-4" />
-                {job.salary}
-              </div>
-              <div className="flex items-center gap-1">
+              </span>
+              <span className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
-                {job.postedDate}
-              </div>
-            </div>
+                {formatDistanceToNow(new Date(job.created_at))} ago
+              </span>
+            </CardDescription>
+          </div>
+          {job.company.logo_url && (
+            <img 
+              src={job.company.logo_url} 
+              alt={`${job.company.name} logo`}
+              className="w-12 h-12 rounded-lg object-cover"
+            />
+          )}
+        </div>
+      </CardHeader>
 
-            <div className="flex gap-2">
-              <Badge variant="secondary">{job.type}</Badge>
+      <CardContent className="space-y-4">
+        <p className="text-gray-700 line-clamp-3">{job.description}</p>
+
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary">{job.employment_type}</Badge>
+          {job.experience_level && (
+            <Badge variant="outline">{job.experience_level}</Badge>
+          )}
+          {job.remote_policy && (
+            <Badge variant="outline">{job.remote_policy}</Badge>
+          )}
+        </div>
+
+        {(job.salary_min || job.salary_max) && (
+          <div className="flex items-center gap-1 text-green-600 font-medium">
+            <DollarSign className="h-4 w-4" />
+            {formatSalary(job.salary_min, job.salary_max)}
+          </div>
+        )}
+
+        {job.requirements && job.requirements.length > 0 && (
+          <div>
+            <h4 className="font-medium text-sm mb-2">Requirements:</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
               {job.requirements.slice(0, 3).map((req, index) => (
-                <Badge key={index} variant="outline">{req}</Badge>
+                <li key={index} className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  {req}
+                </li>
               ))}
               {job.requirements.length > 3 && (
-                <Badge variant="outline">+{job.requirements.length - 3} more</Badge>
+                <li className="text-gray-400">+{job.requirements.length - 3} more...</li>
               )}
-            </div>
-
-            <p className="text-gray-700 line-clamp-3">
-              {job.description}
-            </p>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowDetails(!showDetails)}
-                className="flex-1"
-              >
-                {showDetails ? 'Hide Details' : 'View Details'}
-              </Button>
-              <Button onClick={handleApply} className="flex-1">
-                Apply Now
-              </Button>
-            </div>
-
-            {showDetails && (
-              <div className="mt-4 pt-4 border-t space-y-3">
-                <div>
-                  <h4 className="font-semibold mb-2">Job Description</h4>
-                  <p className="text-gray-700">{job.description}</p>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Requirements</h4>
-                  <ul className="list-disc list-inside space-y-1 text-gray-700">
-                    {job.requirements.map((req, index) => (
-                      <li key={index}>{req}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
+            </ul>
           </div>
-        </CardContent>
-      </Card>
+        )}
 
-      {showApplication && (
-        <JobApplicationForm
-          job={job}
-          onClose={() => setShowApplication(false)}
-          onSubmit={handleApplicationSubmit}
-        />
-      )}
-    </>
+        <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex items-center gap-1 text-sm text-gray-500">
+            <Users className="h-4 w-4" />
+            Posted by {job.posted_by_profile.full_name || 'Recruiter'}
+          </div>
+          
+          {canApply && (
+            <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
+              <DialogTrigger asChild>
+                <Button>Apply Now</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Apply for {job.title}</DialogTitle>
+                </DialogHeader>
+                <JobApplicationForm
+                  jobId={job.id}
+                  jobTitle={job.title}
+                  companyName={job.company.name}
+                  onSuccess={() => setShowApplicationForm(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
