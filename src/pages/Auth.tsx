@@ -1,175 +1,145 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, Briefcase } from "lucide-react";
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, role: 'job_seeker' | 'recruiter') => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
+  loading: boolean;
+}
 
-const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'job_seeker' | 'recruiter'>('job_seeker');
-  const [loading, setLoading] = useState(false);
-  
-  const { signIn, signUp } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) {
-          toast({
-            title: "Error signing in",
-            description: error.message,
-            variant: "destructive",
-          });
-        } else {
-          navigate('/dashboard');
-        }
-      } else {
-        const { error } = await signUp(email, password, fullName, role);
-        if (error) {
-          toast({
-            title: "Error signing up",
-            description: error.message,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Account created successfully",
-            description: "Please check your email to verify your account.",
-          });
-        }
-      }
-    } catch (error) {
-      toast({
-        title: "An error occurred",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="outline" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </div>
-
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">
-              {isLogin ? 'Welcome Back' : 'Create Account'}
-            </CardTitle>
-            <CardDescription>
-              {isLogin 
-                ? 'Sign in to access your TalentMatch Pro account'
-                : 'Join TalentMatch Pro to find your perfect match'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
-                <>
-                  <div>
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="role">I am a...</Label>
-                    <Select value={role} onValueChange={(value: 'job_seeker' | 'recruiter') => setRole(value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="job_seeker">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            Job Seeker
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="recruiter">
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="h-4 w-4" />
-                            Recruiter
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-              
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
-              </Button>
-            </form>
-            
-            <div className="mt-4 text-center">
-              <Button
-                variant="link"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm"
-              >
-                {isLogin 
-                  ? "Don't have an account? Sign up"
-                  : "Already have an account? Sign in"
-                }
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
 
-export default Auth;
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.email);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    console.log('Attempting to sign in with:', email);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      console.error('Sign in error:', JSON.stringify(error, null, 2));
+    } else {
+      console.log('Sign in successful');
+    }
+    return { error };
+  };
+
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'job_seeker' | 'recruiter'
+  ) => {
+    console.log('Attempting to sign up with:', JSON.stringify({ email, password, fullName, role }, null, 2));
+
+    // Validate inputs
+    if (!password || password.length < 6) {
+      const error = { message: 'Password must be at least 6 characters.' };
+      console.error('Sign up error:', JSON.stringify(error, null, 2));
+      return { error };
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      const error = { message: 'Invalid email format.' };
+      console.error('Sign up error:', JSON.stringify(error, null, 2));
+      return { error };
+    }
+    if (!fullName || fullName.trim().length === 0) {
+      const error = { message: 'Full name is required.' };
+      console.error('Sign up error:', JSON.stringify(error, null, 2));
+      return { error };
+    }
+
+    // Perform signup
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error('Sign up error:', JSON.stringify(error, null, 2));
+      return { error };
+    }
+
+    const user = data.user;
+
+    // Set session to authenticate the user for profile insertion
+    if (data.session) {
+      await supabase.auth.setSession(data.session);
+      setSession(data.session);
+      setUser(user);
+    }
+
+    // Insert profile into 'profiles' table
+    const { error: insertError } = await supabase.from('profiles').insert([
+      {
+        id: user.id,
+        email: email, // Required by schema
+        full_name: fullName,
+        role: role,
+      },
+    ]);
+
+    if (insertError) {
+      console.error('Insert profile error:', JSON.stringify({ message: insertError.message, code: insertError.code, details: insertError.details }, null, 2));
+      return { error: { message: `Failed to create profile: ${insertError.message}` } };
+    }
+
+    console.log('Sign up successful with role:', role);
+    return { error: null };
+  };
+
+  const signOut = async () => {
+    console.log('Signing out');
+    await supabase.auth.signOut();
+  };
+
+  const value = {
+    user,
+    session,
+    signIn,
+    signUp,
+    signOut,
+    loading,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
