@@ -1,4 +1,4 @@
-# Welcome to your Lovable project
+# Welcome to your FInd-Fit-Careers
 
 ## Project info
 Hosted On :https://find-fit-careers.lovable.app
